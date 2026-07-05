@@ -1,4 +1,4 @@
-# Firejail Sandbox Skill — Design
+# immure — Firejail Sandbox Skill Design
 
 Date: 2026-07-05
 
@@ -37,7 +37,7 @@ immure/
    - Debian/Ubuntu (apt) and Arch/CachyOS (pacman): fully supported.
    - Fedora (dnf): best-effort supported.
    - Anything else (macOS, Windows/WSL without a supported package manager, unrecognized distro): print "firejail is not supported on this OS/distro — aborting" and stop. No partial setup.
-3. **Install firejail** (+ recommended companions, e.g. `firejail-profiles` where packaged separately). Show the exact install command for the detected package manager and ask the user to confirm before running it (it needs sudo — a system-level, hard-to-reverse-ish action).
+3. **Install firejail**. No extra packages needed for the hardening this design uses (whitelist mode, capability drop, seccomp, private-tmp/etc are all built into the base `firejail` package). Show the exact install command for the detected package manager and ask the user to confirm before running it (it needs sudo — a system-level, hard-to-reverse-ish action).
 4. **Detect tool directories**:
    - `scripts/detect-tool-dirs.sh` scans `$HOME` for known toolchain state dirs that actually exist on disk: `~/.npm`, `~/.m2`, `~/.cargo`, `~/.rustup`, `~/go`, `~/.cache/pip`, `~/.local/share/pipx`, `~/.cache/uv`, `~/.gradle`, etc.
    - It also accepts a project directory argument and scans it for manifest files (`package.json`, `pom.xml`, `build.gradle*`, `Cargo.toml`, `go.mod`, `requirements.txt`, `pyproject.toml`) to flag which ecosystems are actually in play.

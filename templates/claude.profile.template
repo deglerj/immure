@@ -1,0 +1,11 @@
+# immure - generated firejail profile for Claude Code.
+# Do not hand-edit the whitelist block below; re-run the immure skill to
+# regenerate it. Everything else in this file is safe to hand-tune.
+
+noroot
+caps.drop all
+seccomp
+private-tmp
+private-etc passwd,group,hostname,hosts,resolv.conf,ssl,ca-certificates,nsswitch.conf,localtime,machine-id
+
+{{WHITELIST_ENTRIES}}

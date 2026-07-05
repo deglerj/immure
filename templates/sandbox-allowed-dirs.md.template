@@ -1,0 +1,14 @@
+# Sandbox allowed directories
+
+Claude Code is running inside a firejail sandbox (whitelist mode). Only the
+directories listed below — plus the current project directory, added
+automatically each time `claude` is launched — are visible on disk.
+Everything else under your home directory is hidden, not just read-only.
+
+{{ALLOWLIST_TABLE}}
+
+If you need a directory that isn't listed here, don't try to work around
+it: ask the user to add it. They edit `~/.config/firejail/claude.profile`,
+add a line `whitelist <path>`, then start a new `claude` session (the
+profile is read once, at sandbox startup) — or just re-run the immure
+skill, which re-detects candidates and rewrites this file too.

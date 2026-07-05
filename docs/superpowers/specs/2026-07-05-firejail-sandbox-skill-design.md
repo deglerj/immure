@@ -18,10 +18,12 @@ A Claude Code skill that puts Claude Code itself behind a `firejail` sandbox, re
 
 ```
 immure/
-  SKILL.md                        # orchestration & interactive flow
+  SKILL.md                        # orchestration & interactive flow — OS detection, tool-dir
+                                   # detection, and profile rendering are done by Claude directly
+                                   # following SKILL.md instructions, not by dedicated scripts
+                                   # (see "Why some steps are scripts and some are not" below)
   scripts/
-    check-os.sh                   # detect distro + firejail availability; exit non-zero with message if unsupported
-    detect-tool-dirs.sh           # scan $HOME for known toolchain dirs + scan a given project dir for manifest files
+    install-alias.sh              # detects $SHELL, appends bash/zsh alias or fish function, idempotent
   templates/
     claude.profile.template       # base firejail hardening + placeholder whitelist block
     sandbox-allowed-dirs.md.template
@@ -33,19 +35,13 @@ immure/
 1. **Explain firejail's security model** to the user in plain terms:
    - What it does: restricts filesystem visibility to an allowlist (whitelist mode), drops capabilities, blocks new privilege escalation, uses seccomp filtering, gives a private `/tmp`.
    - What it does NOT do: it is not a VM (shares the host kernel), does not stop network exfiltration (network is left open in this design), does not stop a sufficiently novel kernel-level exploit, and is not a substitute for reviewing what Claude Code actually does.
-2. **Check OS support** via `scripts/check-os.sh`:
-   - Debian/Ubuntu (apt) and Arch/CachyOS (pacman): fully supported.
+2. **Check OS support** — Claude runs `cat /etc/os-release` and `command -v firejail` directly and classifies the result itself, following the rules in SKILL.md:
+   - Debian/Ubuntu (apt) and Arch/CachyOS/Manjaro (pacman): fully supported.
    - Fedora (dnf): best-effort supported.
-   - Anything else (macOS, Windows/WSL without a supported package manager, unrecognized distro): print "firejail is not supported on this OS/distro — aborting" and stop. No partial setup.
+   - Anything else (macOS, Windows/WSL without a supported package manager, unrecognized distro): tell the user firejail isn't supported on this OS/distro and stop. No partial setup.
 3. **Install firejail**. No extra packages needed for the hardening this design uses (whitelist mode, capability drop, seccomp, private-tmp/etc are all built into the base `firejail` package). Show the exact install command for the detected package manager and ask the user to confirm before running it (it needs sudo — a system-level, hard-to-reverse-ish action).
-4. **Detect tool directories**:
-   - `scripts/detect-tool-dirs.sh` scans `$HOME` for known toolchain state dirs that actually exist on disk: `~/.npm`, `~/.m2`, `~/.cargo`, `~/.rustup`, `~/go`, `~/.cache/pip`, `~/.local/share/pipx`, `~/.cache/uv`, `~/.gradle`, etc.
-   - It also accepts a project directory argument and scans it for manifest files (`package.json`, `pom.xml`, `build.gradle*`, `Cargo.toml`, `go.mod`, `requirements.txt`, `pyproject.toml`) to flag which ecosystems are actually in play.
-   - Combined candidate list is presented to the user via a multi-select confirmation (accept/reject each candidate dir) before anything is written. Nothing is auto-added without the user seeing it.
-5. **Generate the firejail profile** at `~/.config/firejail/claude.profile`, using **whitelist mode**:
-   - Baseline hardening: `noroot`, `caps.drop all`, default seccomp, `private-tmp`, `private-etc` (with the needed passthrough entries for resolving binaries/certs), no network restriction.
-   - `whitelist ~/.claude`
-   - `whitelist <each approved tool dir>`
+4. **Detect tool directories** — Claude checks which known toolchain state dirs actually exist on disk (`~/.npm`, `~/.m2`, `~/.cargo`, `~/.rustup`, `~/go`, `~/.cache/pip`, `~/.local/share/pipx`, `~/.cache/uv`, `~/.gradle`, and anything else it notices), and separately checks the project directory for manifest files (`package.json`, `pom.xml`, `build.gradle*`, `Cargo.toml`, `go.mod`, `requirements.txt`, `pyproject.toml`) to flag ecosystems in play even before their dir exists. Combined candidate list is presented to the user via a multi-select confirmation (accept/reject each candidate dir) before anything is written. Nothing is auto-added without the user seeing it.
+5. **Generate the firejail profile** at `~/.config/firejail/claude.profile`, using **whitelist mode**. Claude reads `templates/claude.profile.template`, copies the static hardening lines verbatim (`noroot`, `caps.drop all`, default seccomp, `private-tmp`, `private-etc` with the needed passthrough entries, no network restriction), and replaces the template's whitelist placeholder with one `whitelist <dir>` line per approved directory (`~/.claude` plus each approved tool dir). Same pattern for `templates/sandbox-allowed-dirs.md.template` → `~/.claude/sandbox-allowed-dirs.md`.
    - Project directory is deliberately **not** baked into this static file (see step 6).
    - `~/.config/firejail/` itself is never whitelisted — from inside the sandbox this path (and its sibling `claude.profile` file) does not exist, so Claude cannot read or write it. `/etc/firejail/` (system-wide profiles) is untouched by this flow entirely.
 6. **Shell alias**, appended to the user's shell rc (bash/zsh/fish, detected via `$SHELL`):
@@ -66,15 +62,24 @@ Firejail's `--whitelist=<dir>` puts that whole top-level tree (e.g. the rest of 
 
 This is a structural property of whitelist mode, not a prompted behavior: `~/.config/firejail/` is not in the whitelist, so the mount namespace inside the sandbox simply does not expose that path. Claude has no read or write access to `claude.profile` regardless of what it's asked to do or tries to do. `/etc/firejail/` (root-owned system profiles) is unaffected by anything in this flow, since the flow only writes user-level config.
 
+## Why some steps are scripts and some are not
+
+Only `install-alias.sh` is a dedicated script; OS detection, tool-dir detection, and profile rendering are done by Claude directly, following instructions in `SKILL.md`, rather than through bespoke scripts. The split follows what actually needs to be deterministic and tested versus what benefits from Claude's flexibility:
+
+- **OS/package-manager detection**: reading `/etc/os-release` and classifying it is simple enough for Claude to do reliably each time, and doing it inline is more adaptable to distro spellings/variants a fixed `case` statement wouldn't anticipate. Misclassification is low-stakes (wrong install command shown, caught immediately) — not worth a script.
+- **Tool-directory detection**: a fixed array of known dirs is exactly the kind of rigidity that's worth avoiding — Claude checking for known dirs directly (and noticing ones outside the known list) covers more ecosystems than a hardcoded list ever will, and the result funnels into a user confirmation step anyway.
+- **Profile/allowlist rendering**: the substitution itself (insert whitelist lines into a template) is simple enough for Claude to do directly with Read/Write. What's NOT safe to leave to Claude's judgment each run is the *static hardening content* (`noroot`, `caps.drop all`, `seccomp`, `private-etc` list) — retyping that from memory across many sessions risks silent drift. That's why the templates remain plain files Claude copies verbatim, rather than Claude free-typing a profile from scratch.
+- **Shell alias installation**: this is the one step kept as a tested script. It has real per-shell branching (bash/zsh alias syntax vs. fish function syntax), a hard idempotency requirement (must not duplicate the line on repeat runs), and a side effect that silently persists and re-executes every time the user opens a shell if done wrong. That combination of branching logic + persistent side effect + easy-to-miss regression is worth locking down and testing rather than re-deriving each run.
+
 ## Error handling / edge cases
 
-- Unsupported OS → abort immediately with a clear message, no partial state left behind (script exits before any writes).
-- `firejail` already installed → skip install step, proceed to profile generation.
-- Existing `~/.config/firejail/claude.profile` → show a diff/summary of what would change and confirm before overwriting (re-running the skill later to adjust the allowlist should not silently clobber user hand-edits).
+- Unsupported OS → abort immediately with a clear message, no partial state left behind (Claude stops before any writes, per SKILL.md Step 2).
+- `firejail` already installed → skip install step, proceed to directory detection.
+- Existing `~/.config/firejail/claude.profile` → show its contents to the user and confirm before overwriting (re-running the skill later to adjust the allowlist should not silently clobber user hand-edits).
 - No tool dirs detected at all → still generate a profile with just `~/.claude` + project-dir-at-runtime whitelisted; note this to the user.
-- Shell rc detection failure (unrecognized `$SHELL`) → print the alias line and ask the user to add it manually rather than guessing at file paths.
+- Shell rc detection failure (unrecognized `$SHELL`) → `install-alias.sh` prints the alias line and asks the user to add it manually rather than guessing at file paths.
 
 ## Testing / verification
 
-- `scripts/check-os.sh` and `scripts/detect-tool-dirs.sh` are standalone, testable shell scripts — run them directly against a few `$HOME` fixtures / fake `/etc/os-release` files to confirm detection logic and exit codes.
-- End-to-end manual verification: after setup, open a new shell, run `alias claude` to confirm it's registered, launch `claude` in a test project dir, confirm it can read/write the project dir and `~/.claude`, and confirm (via `firejail --whitelist=... ls ~/.config/firejail` from inside a manually-run sandboxed shell) that the profile directory is inaccessible.
+- `scripts/install-alias.sh` is a standalone, testable shell script — run it directly against fixture `$HOME`/`$SHELL` combinations to confirm per-shell output and idempotency.
+- End-to-end manual verification: after setup, open a new shell, run `alias claude` (or `functions claude` on fish) to confirm it's registered, launch `claude` in a test project dir, confirm it can read/write the project dir and `~/.claude`, and confirm (via `firejail --whitelist=... ls ~/.config/firejail` from inside a manually-run sandboxed shell) that the profile directory is inaccessible.

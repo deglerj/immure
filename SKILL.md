@@ -38,18 +38,27 @@ Before touching anything, tell the user, in plain terms:
 Run:
 
 ```bash
-bash scripts/check-os.sh
+cat /etc/os-release
+command -v firejail
 ```
 
-- Exit 0 → prints `PKG=<apt|pacman|dnf>` and `FIREJAIL_INSTALLED=<yes|no>`.
-  Continue to Step 3.
-- Exit 1 → distro unsupported. Show the script's stderr message to the
-  user and **stop here**. Do not run any further steps.
+Classify the distro from `ID` and `ID_LIKE` in `/etc/os-release`:
+
+- `debian` or `ubuntu` (in `ID` or `ID_LIKE`) → package manager `apt`.
+- `arch`, `cachyos`, or `manjaro` → package manager `pacman`.
+- `fedora` → package manager `dnf` (best-effort support).
+- Anything else, or `/etc/os-release` doesn't exist → **unsupported.**
+  Tell the user immure doesn't support this OS/distro and **stop here**.
+  Do not run any further steps, don't write anything.
+
+If `command -v firejail` found nothing, firejail isn't installed yet —
+continue to Step 3. If it printed a path, firejail is already installed —
+skip Step 3 and go to Step 4.
 
 ## Step 3: Install firejail if needed
 
-If `FIREJAIL_INSTALLED=no`, show the user the install command for their
-`PKG` and get explicit confirmation before running it (it needs sudo):
+Show the user the install command for the package manager identified in
+Step 2 and get explicit confirmation before running it (it needs sudo):
 
 - `apt` → `sudo apt install firejail`
 - `pacman` → `sudo pacman -S firejail`
@@ -60,15 +69,23 @@ Never run the sudo command without the user confirming first.
 ## Step 4: Detect candidate directories
 
 Ask the user which project directory they primarily work in if it isn't
-already obvious from context, then run:
+already obvious from context. Then build a candidate list yourself:
 
-```bash
-bash scripts/detect-tool-dirs.sh /path/to/project
-```
+1. Always include `$HOME/.claude` unconditionally.
+2. Check which of these toolchain dirs actually exist on disk (`ls -d`
+   each): `~/.npm`, `~/.m2`, `~/.cargo`, `~/.rustup`, `~/go`,
+   `~/.cache/pip`, `~/.local/share/pipx`, `~/.cache/uv`, `~/.gradle`.
+   Don't limit yourself to this list — if you notice other toolchain
+   state dirs on this system (e.g. `~/.bundle`, `~/.dotnet`, `~/.sbt`),
+   include them too.
+3. Check the project directory for manifest files and note which
+   ecosystems are in play, even if the matching dir above doesn't exist
+   yet (it will be created on first install): `package.json` → npm,
+   `pom.xml` → maven, `build.gradle*` → gradle, `Cargo.toml` → cargo,
+   `go.mod` → go, `requirements.txt`/`pyproject.toml` → pip.
 
-Output is pipe-delimited lines `<dir>|<tool>|<reason>`. Parse this into a
-candidate list. Always add `$HOME/.claude` to the list unconditionally —
-the script does not emit it.
+For each candidate, note why it's a candidate (found on disk, matches a
+project manifest, or both).
 
 Present the full candidate list to the user with the `AskUserQuestion`
 tool (multiSelect) so each directory is explicitly approved or rejected
@@ -77,19 +94,20 @@ do not add any directory the user didn't approve.
 
 ## Step 5: Generate the profile and allowlist doc
 
-Take the user-approved absolute directory paths (this always includes
-`$HOME/.claude`) and run:
-
-```bash
-bash scripts/render-config.sh \
-  templates/claude.profile.template "$HOME/.config/firejail/claude.profile" \
-  templates/sandbox-allowed-dirs.md.template "$HOME/.claude/sandbox-allowed-dirs.md" \
-  <approved-dir-1> <approved-dir-2> ...
-```
-
 If `$HOME/.config/firejail/claude.profile` already exists, show its
 current contents to the user and get confirmation before overwriting —
 re-running this skill must never silently clobber a hand-edited profile.
+
+Read `templates/claude.profile.template`. **Do not alter the hardening
+lines** (`noroot`, `caps.drop all`, `seccomp`, `private-tmp`,
+`private-etc ...`) — copy them verbatim. Replace the
+`{{WHITELIST_ENTRIES}}` line with one `whitelist <dir>` line per
+user-approved directory from Step 4 (always includes `$HOME/.claude`).
+Write the result to `$HOME/.config/firejail/claude.profile`.
+
+Read `templates/sandbox-allowed-dirs.md.template` and replace the
+`{{ALLOWLIST_TABLE}}` line with one `` - `<dir>` `` line per approved
+directory. Write the result to `$HOME/.claude/sandbox-allowed-dirs.md`.
 
 ## Step 6: Install the shell alias
 

@@ -17,7 +17,7 @@ A Claude Code skill that puts Claude Code itself behind a `firejail` sandbox, re
 ## Components
 
 ```
-firejailer/
+immure/
   SKILL.md                        # orchestration & interactive flow
   scripts/
     check-os.sh                   # detect distro + firejail availability; exit non-zero with message if unsupported

@@ -75,7 +75,11 @@ Never run the sudo command without the user confirming first.
 Ask the user which project directory they primarily work in if it isn't
 already obvious from context. Then build a candidate list yourself:
 
-1. Always include `$HOME/.claude` unconditionally.
+1. Always include `$HOME/.claude`, `$HOME/.claude.json`,
+   `$HOME/.claude.json.backup`, and `$HOME/.gitconfig` unconditionally —
+   Claude Code's own config lives directly under `$HOME` in the `.claude.json`
+   files (not under `$HOME/.claude/`), and git commits need `.gitconfig`
+   (user name/email); without these, they're invisible once sandboxed.
 2. Check which of these toolchain dirs actually exist on disk (`ls -d`
    each): `~/.npm`, `~/.m2`, `~/.cargo`, `~/.rustup`, `~/go`,
    `~/.cache/pip`, `~/.local/share/pipx`, `~/.cache/uv`, `~/.gradle`.
@@ -108,7 +112,8 @@ lines** (`noroot`, `nonewprivs`, `nogroups`, `caps.drop all`, `seccomp`,
 `private-dev`, `private-etc ...`, `no3d`, `notv`, `nou2f`) — copy them
 verbatim. Replace the
 `{{WHITELIST_ENTRIES}}` line with one `whitelist <dir>` line per
-user-approved directory from Step 4 (always includes `$HOME/.claude`).
+user-approved directory from Step 4 (always includes `$HOME/.claude`,
+`$HOME/.claude.json`, `$HOME/.claude.json.backup`, and `$HOME/.gitconfig`).
 Write the result to `$HOME/.config/firejail/claude.profile`.
 
 Read `templates/sandbox-allowed-dirs.md.template` and replace the

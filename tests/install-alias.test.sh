@@ -2,7 +2,7 @@
 set -uo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT="$DIR/../scripts/install-alias.sh"
+SCRIPT="$DIR/../skills/immure/scripts/install-alias.sh"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 

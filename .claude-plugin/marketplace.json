@@ -1,0 +1,11 @@
+{
+  "name": "firejailer",
+  "owner": { "name": "Johannes Degler" },
+  "plugins": [
+    {
+      "name": "immure",
+      "source": ".",
+      "description": "Sandbox Claude Code inside firejail behind a user-approved filesystem allowlist."
+    }
+  ]
+}

@@ -86,7 +86,13 @@ already obvious from context. Then build a candidate list yourself:
    Don't limit yourself to this list — if you notice other toolchain
    state dirs on this system (e.g. `~/.bundle`, `~/.dotnet`, `~/.sbt`),
    include them too.
-3. Check the project directory for manifest files and note which
+3. Check which of these VCS/CLI auth config dirs actually exist on disk
+   (`ls -d` each): `~/.config/gh` (GitHub CLI), `~/.config/glab-cli`
+   (GitLab CLI), `~/.config/git` (alternate git config location), and the
+   `~/.git-credentials` file. Missing these is what makes `gh`/`glab`
+   report "not logged in" or git report missing credentials once
+   sandboxed, even though `~/.gitconfig` (already in item 1) is present.
+4. Check the project directory for manifest files and note which
    ecosystems are in play, even if the matching dir above doesn't exist
    yet (it will be created on first install): `package.json` → npm,
    `pom.xml` → maven, `build.gradle*` → gradle, `Cargo.toml` → cargo,

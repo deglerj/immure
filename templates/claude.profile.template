@@ -3,9 +3,17 @@
 # regenerate it. Everything else in this file is safe to hand-tune.
 
 noroot
+nonewprivs
+nogroups
 caps.drop all
 seccomp
+seccomp.block-secondary
+protocol unix,inet,inet6
 private-tmp
+private-dev
 private-etc passwd,group,hostname,hosts,resolv.conf,ssl,ca-certificates,nsswitch.conf,localtime,machine-id
+no3d
+notv
+nou2f
 
 {{WHITELIST_ENTRIES}}

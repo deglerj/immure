@@ -24,14 +24,18 @@ Before touching anything, tell the user, in plain terms:
 
 - **What firejail does here:** restricts filesystem visibility to an
   allowlist (whitelist mode) — anything not listed is hidden, not just
-  read-only; drops Linux capabilities (`caps.drop all`); blocks privilege
-  escalation (`noroot`); applies the default seccomp filter; gives Claude
-  Code a private `/tmp`.
+  read-only; drops Linux capabilities (`caps.drop all`) and supplementary
+  groups (`nogroups`); blocks becoming root (`noroot`) and any other
+  privilege gain (`nonewprivs`); applies the default seccomp filter plus
+  32-bit syscall blocking (`seccomp.block-secondary`); restricts sockets to
+  unix/inet/inet6 (`protocol unix,inet,inet6`, dropping netlink/packet/
+  bluetooth); disables 3D/DVB-TV/U2F device access (`no3d`, `notv`,
+  `nou2f`); gives Claude Code a private `/tmp` and `/dev`.
 - **What it does NOT do:** it is not a VM — it shares the host kernel, so
-  a kernel-level exploit escapes it; it does not restrict network access
-  in this setup (full network stays open — npm/pip/cargo/git/the
-  Anthropic API all need it); it is not a substitute for reviewing what
-  Claude Code actually does.
+  a kernel-level exploit escapes it; it does not restrict TCP/IP network
+  access in this setup (npm/pip/cargo/git/the Anthropic API all need it —
+  only the socket *families* are narrowed, not blocked); it is not a
+  substitute for reviewing what Claude Code actually does.
 
 ## Step 2: Check OS support
 
@@ -99,8 +103,10 @@ current contents to the user and get confirmation before overwriting —
 re-running this skill must never silently clobber a hand-edited profile.
 
 Read `templates/claude.profile.template`. **Do not alter the hardening
-lines** (`noroot`, `caps.drop all`, `seccomp`, `private-tmp`,
-`private-etc ...`) — copy them verbatim. Replace the
+lines** (`noroot`, `nonewprivs`, `nogroups`, `caps.drop all`, `seccomp`,
+`seccomp.block-secondary`, `protocol unix,inet,inet6`, `private-tmp`,
+`private-dev`, `private-etc ...`, `no3d`, `notv`, `nou2f`) — copy them
+verbatim. Replace the
 `{{WHITELIST_ENTRIES}}` line with one `whitelist <dir>` line per
 user-approved directory from Step 4 (always includes `$HOME/.claude`).
 Write the result to `$HOME/.config/firejail/claude.profile`.

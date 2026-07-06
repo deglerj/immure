@@ -27,9 +27,12 @@ skills/immure/
     claude.profile.template # static firejail hardening (noroot, caps.drop,
                              # seccomp, private-tmp/etc) + {{WHITELIST_ENTRIES}}
     sandbox-allowed-dirs.md.template   # -> ~/.claude/sandbox-allowed-dirs.md
-    claude-md-snippet.md    # appended to ~/.claude/CLAUDE.md (global) so a
-                             # sandboxed Claude knows to check the allowlist
-                             # doc before assuming a write error is a bug
+    claude-md-snippet.md    # copied to ~/.claude/sandbox-awareness.md; an
+                             # `@sandbox-awareness.md` import line (not the
+                             # full block) gets appended to ~/.claude/CLAUDE.md
+                             # so a sandboxed Claude knows to check the
+                             # allowlist doc before assuming a write error is
+                             # a bug
 tests/
   install-alias.test.sh    # fixture-based tests for the one real script
 docs/superpowers/

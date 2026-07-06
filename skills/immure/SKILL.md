@@ -1,6 +1,6 @@
 ---
 name: immure
-description: Set up or update a firejail sandbox that Claude Code runs inside, restricting its filesystem access to a user-approved directory allowlist that Claude cannot itself modify. Use when the user asks to sandbox Claude Code, run Claude Code inside firejail, restrict Claude's filesystem access, or mentions "immure". Also use when Claude Code is already sandboxed and hits a permission/write error that looks like a sandbox restriction (check `~/.claude/sandbox-allowed-dirs.md` first — this skill is how a new directory gets added).
+description: Set up or update a firejail sandbox that Claude Code runs inside, restricting its filesystem access to a user-approved directory allowlist that Claude cannot itself modify. Use when the user asks to sandbox Claude Code, run Claude Code inside firejail, restrict Claude's filesystem access, or mentions "immure". Also use when Claude Code is already sandboxed and hits a permission/write error, or a tool (git, gh, etc.) reports missing auth/config that's actually it being unable to reach its config files, that looks like a sandbox restriction (check `~/.claude/sandbox-allowed-dirs.md` first — this skill is how a new directory gets added).
 ---
 
 # immure
@@ -137,10 +137,20 @@ bash scripts/install-alias.sh
 ## Step 7: Wire up sandbox awareness in CLAUDE.md
 
 Check whether `$HOME/.claude/CLAUDE.md` already contains the line
-`## Sandbox awareness (immure / firejail)`. If it does, skip this step —
-don't duplicate the block. Otherwise, append the full contents of
-`templates/claude-md-snippet.md` to `$HOME/.claude/CLAUDE.md` (creating
-the file first if it doesn't exist).
+`@sandbox-awareness.md`. If it does, skip this step — don't duplicate the
+import.
+
+Otherwise:
+
+1. If `$HOME/.claude/sandbox-awareness.md` already exists, show its
+   current contents to the user and get confirmation before overwriting —
+   same rule as the firejail profile in Step 5. Then copy the contents of
+   `templates/claude-md-snippet.md` verbatim to
+   `$HOME/.claude/sandbox-awareness.md`.
+2. Append the line `@sandbox-awareness.md` to `$HOME/.claude/CLAUDE.md`
+   (creating the file first if it doesn't exist) — an import, not the
+   full block, matching how other tools (e.g. `@RTK.md`) wire themselves
+   into global CLAUDE.md.
 
 ## Done
 

@@ -3,7 +3,7 @@
   "description": "Sandbox Claude Code inside firejail behind a user-approved filesystem allowlist.",
   "version": "0.1.0",
   "author": { "name": "Johannes Degler", "email": "johannes@degler.info" },
-  "homepage": "https://github.com/deglerj/firejailer",
-  "repository": "https://github.com/deglerj/firejailer",
+  "homepage": "https://github.com/deglerj/immure",
+  "repository": "https://github.com/deglerj/immure",
   "license": "MIT"
 }

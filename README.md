@@ -1,4 +1,4 @@
-# firejailer
+# immure
 
 A Claude Code plugin that sandboxes Claude Code itself behind
 [firejail](https://firejail.wordpress.com/), restricting filesystem access to
@@ -28,7 +28,7 @@ once sandboxed.
 ## Install
 
 ```
-/plugin marketplace add deglerj/firejailer
+/plugin marketplace add deglerj/immure
 /plugin install immure
 ```
 

@@ -17,7 +17,7 @@ is not duplicated here.
 ```
 .claude-plugin/
   plugin.json               # plugin metadata (name, version, author, license)
-  marketplace.json          # lets users `/plugin marketplace add deglerj/firejailer`
+  marketplace.json          # lets users `/plugin marketplace add deglerj/immure`
 skills/immure/
   SKILL.md                  # the skill's 7-step flow, run by Claude directly
   scripts/
